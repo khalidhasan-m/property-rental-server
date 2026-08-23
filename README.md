@@ -145,15 +145,15 @@ Never commit real MongoDB credentials, JWT secrets, Stripe secret keys, Google c
 
 ## Local development
 
-Install Node.js 20 or newer and pnpm. Configure a reachable MongoDB database before starting the server.
+Install Node.js 20 or newer and npm. Configure a reachable MongoDB database before starting the server.
 
 ```bash
 git clone https://github.com/khalidhasan-m/property-rental-server.git
 cd property-rental-server
 cp .env.example .env
 # Edit .env and set MONGODB_URI and JWT_SECRET at minimum.
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
 The development command uses Node's built-in watch mode. The API will be available at `http://localhost:5000` unless `PORT` is changed.
@@ -162,9 +162,9 @@ Useful commands:
 
 | Command | Description |
 |---|---|
-| `pnpm dev` | Start the server with `node --watch`. |
-| `pnpm start` | Start the server normally. |
-| `pnpm test` | Run the Node.js regression tests with test environment variables. |
+| `npm run dev` | Start the server with `node --watch`. |
+| `npm run start` | Start the server normally. |
+| `npm test` | Run the Node.js regression tests with test environment variables. |
 
 ## Testing
 
