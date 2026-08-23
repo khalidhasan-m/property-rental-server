@@ -1,29 +1,42 @@
-# Nestora Property Rental Server
+# Nestora Property Rental — Server
 
-This repository contains the backend API for Nestora, a property rental and booking platform. It is a **CommonJS JavaScript Node.js application** built with Express. The API uses the native MongoDB driver, validates requests with Zod, authenticates users with JWTs stored in HTTP-only cookies, and integrates with Stripe, Google token verification, and imgbb.
+Nestora is a property rental and booking marketplace. Tenants can discover approved properties, save favourites, submit booking requests, pay reservation fees through Stripe, and write reviews after a paid booking. Owners can create and manage listings, respond to booking requests, and view earnings. Administrators can manage users, moderate properties, monitor bookings, and inspect transactions.
+
+This repository contains the **Express backend API**. The frontend is maintained separately in [`property-rental-client`](https://github.com/khalidhasan-m/property-rental-client).
+
+## Project links
+
+| Item | Link or value |
+|---|---|
+| Server repository | [`khalidhasan-m/property-rental-server`](https://github.com/khalidhasan-m/property-rental-server) |
+| Client repository | [`khalidhasan-m/property-rental-client`](https://github.com/khalidhasan-m/property-rental-client) |
+| Production API URL | **Add the deployed API URL here before submission.** |
+| Production health check | **Add the deployed `/api/v1/health` URL here before submission.** |
+| Local API URL | `http://localhost:5000` |
+| API base path | `/api/v1` |
 
 ## Technology stack
 
-| Technology | Version or configuration | Actual use |
-|---|---:|---|
-| Node.js | 20 or newer recommended | Server runtime |
-| Express | `5.2.1` | HTTP server and REST API routing |
-| CommonJS | — | Backend module system using `require` and `module.exports` |
-| MongoDB Node.js Driver | `7.5.0` | Direct database access through `MongoClient` and collection APIs |
-| MongoDB Atlas | External service | Cloud database hosting |
-| Zod | `4.4.3` | Environment, body, query-string, and route-parameter validation |
-| bcryptjs | `3.0.3` | Password hashing with 12 salt rounds and password comparison |
-| jsonwebtoken | `9.0.3` | JWT signing and verification |
-| cookie-parser | `1.4.7` | Reading the `accessToken` cookie |
-| cors | `2.8.6` | Credential-enabled cross-origin API access |
-| dotenv | `17.4.2` | Loading `.env` configuration |
-| Axios | `1.19.0` | Server-side requests to the imgbb upload API |
-| Stripe Node.js SDK | `22.5.0` | PaymentIntent creation and retrieval |
-| Google Auth Library | `11.0.2` | Google ID-token verification |
-| Node.js built-in test runner | `node:test` | API and security regression tests |
-| Vercel | `api/index.js` and `vercel.json` | Serverless deployment entrypoint and route rewrite |
+| Technology | Version or use |
+|---|---|
+| Node.js | 20 or newer recommended |
+| npm | Package manager |
+| Express | `5.2.1`, HTTP server and REST routing |
+| MongoDB Node.js Driver | `7.5.0`, direct MongoDB access |
+| MongoDB Atlas | Cloud database hosting option |
+| Zod | Environment, body, query, and route-parameter validation |
+| bcryptjs | Password hashing with 12 salt rounds |
+| jsonwebtoken | JWT signing and verification |
+| cookie-parser | HTTP-only authentication-cookie parsing |
+| cors | Credential-enabled cross-origin API access |
+| dotenv | Environment configuration |
+| Stripe Node.js SDK | PaymentIntent creation and retrieval |
+| Google Auth Library | Google ID-token verification |
+| Axios | ImgBB upload requests |
+| Node.js built-in test runner | API and security regression tests |
+| Vercel | Serverless deployment through `api/index.js` and `vercel.json` |
 
-The server does not use Mongoose, Prisma, Firebase, Supabase, Passport, Multer, GraphQL, Socket.IO, or a separate ORM.
+The server uses the native MongoDB driver rather than Mongoose, Prisma, or a separate ORM. It does not use Firebase, Supabase, Passport, Multer, GraphQL, Socket.IO, or Redux.
 
 ## Architecture
 
@@ -32,65 +45,65 @@ src/
 ├── config/        Environment parsing and MongoDB connection management
 ├── controllers/   Authentication, property, booking, engagement, admin, and upload handlers
 ├── middlewares/   Authentication, role authorization, validation, and error handling
-├── models/        Helper for native MongoDB collection handles
+├── models/        Native MongoDB collection helpers
 ├── routes/        Express route definitions
-├── services/      Property queries, analytics, Stripe, Google, and imgbb integrations
-└── validations/   Zod schemas for request bodies, query strings, and parameters
+├── services/      Property queries, analytics, Stripe, Google, and ImgBB integrations
+└── validations/   Zod request and environment schemas
 api/
-└── index.js       Vercel function entrypoint that exports the Express app
+└── index.js       Vercel serverless-function entrypoint
 test/
 └── app.test.js    Node.js HTTP-level API and security tests
 ```
 
-The database currently uses the following MongoDB collections: `users`, `properties`, `bookings`, `favorites`, `reviews`, and `transactions`. On connection, the application creates indexes for unique user emails, owner/property lookups, property filters, tenant and owner booking lists, unique tenant-property favourites, review listings, and one transaction per booking.
+MongoDB collections are `users`, `properties`, `bookings`, `favorites`, `reviews`, and `transactions`. On connection, the application creates indexes for unique user emails, owner/property lookups, property filters, tenant and owner booking lists, unique tenant-property favourites, review listings, and one transaction per booking.
 
-## API behavior
+## API reference
 
-The API base path is `/api/v1`. The root endpoint returns a server-running message, while `/api/v1/health` returns a JSON health response with status and timestamp.
+All API routes use the `/api/v1` prefix unless otherwise noted. The root endpoint returns a server-running message, and `/api/v1/health` returns a JSON health response with status and timestamp.
 
-### Authentication routes
+### Authentication
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| `POST` | `/api/v1/auth/register` | Public | Create a tenant or owner account |
+| `POST` | `/api/v1/auth/register` | Public | Create a Tenant or Owner account |
 | `POST` | `/api/v1/auth/login` | Public | Authenticate with email and password |
-| `POST` | `/api/v1/auth/social-login` | Public | Verify a Google ID token and sign in as a tenant |
+| `POST` | `/api/v1/auth/social-login` | Public | Verify Google ID token and sign in; new social users become Tenants |
 | `POST` | `/api/v1/auth/logout` | Public | Clear the authentication cookie |
 | `GET` | `/api/v1/auth/me` | Authenticated | Return the current user |
 | `PATCH` | `/api/v1/auth/profile` | Authenticated | Update name, phone, or photo URL |
 
-### Property routes
+### Properties
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| `GET` | `/api/v1/properties/featured` | Public | Return the first six approved properties |
+| `GET` | `/api/v1/properties/featured` | Public | Return up to six approved properties |
 | `GET` | `/api/v1/properties` | Public | Filter, sort, and paginate approved properties |
-| `GET` | `/api/v1/properties/mine` | Owner | List the current owner's properties |
-| `GET` | `/api/v1/properties/mine/:id` | Owner | Retrieve one property belonging to the owner |
-| `POST` | `/api/v1/properties` | Owner | Create a pending property listing |
-| `GET` | `/api/v1/properties/:id` | Authenticated | Retrieve an approved property and its owner/review summary |
-| `PATCH` | `/api/v1/properties/:id` | Owner or admin | Update a property; owner edits return it to pending status |
-| `DELETE` | `/api/v1/properties/:id` | Owner or admin | Delete a property and its favourites |
+| `GET` | `/api/v1/properties/mine` | Owner | List the current Owner’s properties |
+| `GET` | `/api/v1/properties/mine/:id` | Owner | Retrieve one property belonging to the Owner |
+| `POST` | `/api/v1/properties` | Owner | Create a Pending property listing |
+| `GET` | `/api/v1/properties/:id` | Authenticated | Retrieve an approved property and owner/review summary |
+| `PATCH` | `/api/v1/properties/:id` | Owner or Admin | Update a property; Owner edits return to Pending review |
+| `DELETE` | `/api/v1/properties/:id` | Owner or Admin | Delete a property and related favourites |
 | `GET` | `/api/v1/properties/admin/all` | Admin | List properties for moderation |
-| `PATCH` | `/api/v1/properties/admin/:id/moderate` | Admin | Approve or reject a property with optional feedback |
+| `PATCH` | `/api/v1/properties/admin/:id/moderate` | Admin | Approve or reject a property with feedback |
 
-Property queries support `page`, `limit`, `search`, `location`, `propertyType`, `minPrice`, `maxPrice`, and `sort`. Search input is escaped before it is used in MongoDB regular expressions.
+Property queries support `page`, `limit`, `search`, `location`, `propertyType`, `minPrice`, `maxPrice`, and `sort`. Search text is escaped before it is used in MongoDB regular expressions.
 
-### Booking and payment routes
+### Bookings and payments
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
 | `POST` | `/api/v1/bookings` | Tenant | Create a booking request for an approved property |
-| `GET` | `/api/v1/bookings/mine` | Tenant | List the current tenant's bookings |
-| `GET` | `/api/v1/bookings/owner` | Owner | List booking requests for the current owner's properties |
+| `GET` | `/api/v1/bookings/mine` | Tenant | List the current Tenant’s bookings |
+| `GET` | `/api/v1/bookings/owner` | Owner | List booking requests for the Owner’s properties |
 | `PATCH` | `/api/v1/bookings/:id/decision` | Owner | Approve or reject a booking request |
 | `POST` | `/api/v1/bookings/payment-intent` | Tenant | Create a Stripe PaymentIntent for an unpaid booking |
-| `POST` | `/api/v1/bookings/confirm-payment` | Tenant | Retrieve and verify a successful Stripe PaymentIntent |
+| `POST` | `/api/v1/bookings/confirm-payment` | Tenant | Retrieve and confirm a successful PaymentIntent |
 | `GET` | `/api/v1/bookings/admin/all` | Admin | List all bookings with tenant, owner, and property data |
 
-The server creates Stripe PaymentIntents in USD, converts the rental amount to cents, enables automatic payment methods, stores the booking ID and property title in metadata, and records a successful payment in the `transactions` collection. The current implementation has no Stripe webhook endpoint; confirmation is performed by the authenticated client flow followed by server-side PaymentIntent retrieval.
+The current payment flow creates a PaymentIntent in USD, converts the rental amount to cents, enables automatic payment methods, stores booking metadata, and records a successful transaction after client confirmation and server-side PaymentIntent retrieval. There is currently no Stripe webhook endpoint; add one if webhook-based production reconciliation is required.
 
-### Favourites and review routes
+### Favourites and reviews
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
@@ -101,91 +114,95 @@ The server creates Stripe PaymentIntents in USD, converts the rental amount to c
 | `POST` | `/api/v1/reviews` | Tenant | Create or update a review after a paid booking |
 | `GET` | `/api/v1/reviews/:id` | Public | List reviews for a property |
 
-### Administrative and upload routes
+### Administration and uploads
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
 | `GET` | `/api/v1/admin/users` | Admin | Paginated user list with optional search |
-| `PATCH` | `/api/v1/admin/users/:id/role` | Admin | Change a user's role; an admin cannot change their own role |
+| `PATCH` | `/api/v1/admin/users/:id/role` | Admin | Change a user role; an Admin cannot change their own role |
 | `GET` | `/api/v1/admin/transactions` | Admin | Paginated successful transaction ledger |
-| `GET` | `/api/v1/admin/owner/analytics` | Owner | Return property count, approved paid-booking count, total earnings, and twelve monthly earnings values |
-| `POST` | `/api/v1/uploads/images` | Owner | Upload one to eight base64 images to imgbb |
+| `GET` | `/api/v1/admin/owner/analytics` | Owner | Return owner totals and twelve monthly earnings values |
+| `POST` | `/api/v1/uploads/images` | Owner | Upload one to eight base64 images to ImgBB |
 
-## Authentication and security
+## Roles and security
 
-The server signs a JWT containing the user ID and stores it in an `accessToken` cookie. The cookie is `httpOnly`, has a root path, uses `sameSite: lax` in development and `sameSite: none` in production, and becomes secure in production or when `COOKIE_SECURE=true`. Every protected request verifies the token and reloads the user from MongoDB.
+The supported roles are `tenant`, `owner`, and `admin`. Every protected request verifies the JWT in the HTTP-only `accessToken` cookie and reloads the user from MongoDB. Role middleware enforces access to Tenant, Owner, and Admin endpoints.
 
-Express is configured with credential-enabled CORS using the comma-separated `CLIENT_URL` allowlist. State-changing requests with an untrusted `Origin` are rejected. The app disables `x-powered-by` and adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and a strict referrer policy. JSON request bodies are limited to `10mb` because image uploads are submitted as base64 data.
+The server uses credential-enabled CORS with the comma-separated `CLIENT_URL` allowlist. State-changing requests with an untrusted `Origin` are rejected. Express disables `x-powered-by` and sends `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and a strict referrer policy. Production error responses hide unexpected server details. JSON request bodies are limited to `10mb` because owner image uploads use base64 data.
 
-The application uses a centralized error handler. Duplicate MongoDB key errors return HTTP `409`, validation failures return HTTP `400` with issue paths, and production responses hide unexpected server-error details.
+Never commit MongoDB credentials, JWT secrets, Stripe secret keys, Google credentials, or the ImgBB API key. The `.env` file is excluded from Git.
 
 ## Environment variables
 
-Create the server environment file from the template:
+Create the local environment file from the safe template:
 
 ```bash
 cp .env.example .env
 ```
 
-| Variable | Required status | Description |
+| Variable | Required | Description |
 |---|---|---|
-| `NODE_ENV` | Optional | `development`, `test`, or `production`; defaults to `development`. |
-| `PORT` | Optional | HTTP port; defaults to `5000`. |
-| `MONGODB_URI` | Required | MongoDB connection string. |
-| `MONGODB_DB` | Optional | Database name; defaults to `property_rental`. |
-| `JWT_SECRET` | Required | At least 24 characters; used to sign authentication JWTs. |
-| `JWT_EXPIRES_IN` | Optional | JWT lifetime; defaults to `7d`. |
-| `CLIENT_URL` | Optional | One or more valid frontend origins separated by commas; defaults to `http://localhost:3000`. |
-| `STRIPE_SECRET_KEY` | Required for payments | Stripe server secret key. |
-| `IMGBB_API_KEY` | Required for uploads; required in production | imgbb API key. |
-| `GOOGLE_CLIENT_ID` | Required for Google sign-in | Google OAuth web client ID used to verify ID tokens. |
-| `COOKIE_SECURE` | Optional | String value `true` or `false`; defaults to `false`. |
-
-Never commit real MongoDB credentials, JWT secrets, Stripe secret keys, Google credentials, or the imgbb API key.
+| `NODE_ENV` | No | `development`, `test`, or `production`; defaults to `development`. |
+| `PORT` | No | HTTP port; defaults to `5000`. |
+| `MONGODB_URI` | Yes | MongoDB connection string. |
+| `MONGODB_DB` | No | Database name; defaults to `property_rental`. |
+| `JWT_SECRET` | Yes | At least 24 characters; signs authentication JWTs. |
+| `JWT_EXPIRES_IN` | No | JWT lifetime; defaults to `7d`. |
+| `CLIENT_URL` | Recommended | Exact frontend origin, or comma-separated allowed origins. |
+| `STRIPE_SECRET_KEY` | For payments | Server-only Stripe secret key. |
+| `IMGBB_API_KEY` | For uploads; required in production | Server-only ImgBB API key. |
+| `GOOGLE_CLIENT_ID` | For Google sign-in | Google OAuth web client ID. |
+| `COOKIE_SECURE` | No | `true` or `false`; use `true` with HTTPS. |
 
 ## Local development
 
-Install Node.js 20 or newer and npm. Configure a reachable MongoDB database before starting the server.
+Use Node.js 20 or newer and npm:
 
 ```bash
+node --version
+npm --version
 git clone https://github.com/khalidhasan-m/property-rental-server.git
 cd property-rental-server
-cp .env.example .env
-# Edit .env and set MONGODB_URI and JWT_SECRET at minimum.
 npm install
+cp .env.example .env
+```
+
+Edit `.env` and set at least `MONGODB_URI` and `JWT_SECRET`. Set Stripe, Google, and ImgBB variables when testing those integrations. Start the development server:
+
+```bash
 npm run dev
 ```
 
-The development command uses Node's built-in watch mode. The API will be available at `http://localhost:5000` unless `PORT` is changed.
+The API is available at [http://localhost:5000](http://localhost:5000), with the health endpoint at [http://localhost:5000/api/v1/health](http://localhost:5000/api/v1/health).
 
-Useful commands:
-
-| Command | Description |
+| Command | Purpose |
 |---|---|
-| `npm run dev` | Start the server with `node --watch`. |
+| `npm run dev` | Start the server with Node’s watch mode. |
 | `npm run start` | Start the server normally. |
-| `npm test` | Run the Node.js regression tests with test environment variables. |
+| `npm test` | Run the Node.js regression tests. |
 
 ## Testing
 
-`test/app.test.js` starts the Express app on a temporary local HTTP port and currently verifies the health response, security headers, removal of `x-powered-by`, JSON 404 handling, rejection of an untrusted state-changing origin, and the authentication requirement on the property-detail endpoint.
+Run the automated tests with:
 
-The test command supplies a local MongoDB URI and test JWT secret through the script itself. Full database-backed feature testing still requires a running MongoDB instance and configured third-party credentials for the relevant integrations.
+```bash
+npm test
+```
 
-## Initial admin setup
+The current regression suite checks the health response, security headers, removal of `x-powered-by`, JSON 404 handling, rejection of an untrusted state-changing origin, and authentication protection on the property-detail endpoint. Full database-backed testing requires a reachable MongoDB instance. Google, Stripe, and ImgBB integration tests also require their respective configured credentials.
 
-Registration accepts only `tenant` and `owner` roles. To create the first administrator, register an account and change that user's `role` field to `admin` in MongoDB. Administrators can then change other users' roles through the admin API.
+For final acceptance, test all three roles against their allowed and denied endpoints; property creation and moderation; rejection feedback; public filtering/sorting/pagination; favourites; reviews; booking status transitions; Stripe success/failure/cancellation; transaction creation; owner analytics; cross-user isolation; and production CORS, route, and cookie behavior.
+
+## Initial administrator setup
+
+Registration accepts only `tenant` and `owner` roles. To create the first administrator, register an account and change that user’s `role` field to `admin` directly in MongoDB using a secure administrative connection. After that, Administrators can change other user roles through the admin API. Never expose the administrator password in source control or the public README.
 
 ## Deployment on Vercel
 
-The repository includes `api/index.js`, which exports the Express app, and `vercel.json`, which rewrites incoming requests to that serverless function. Deploy the repository as a Node.js project and configure the server environment variables in Vercel.
+The repository includes `api/index.js`, which exports the Express app, and `vercel.json`, which rewrites incoming requests to that serverless function. Deploy the repository as a Node.js project and configure the environment variables in the Vercel project.
 
-For a cross-origin deployed client, set `CLIENT_URL` to the exact frontend origin, set `COOKIE_SECURE=true`, use HTTPS for both applications, and provide the production Stripe, Google, and imgbb values as server-only variables. Set the frontend's `NEXT_PUBLIC_API_URL` to the deployed API URL ending in `/api/v1`.
+For a cross-origin production client, set `CLIENT_URL` to the exact frontend origin, set `COOKIE_SECURE=true`, use HTTPS for both applications, and configure production Stripe, Google, and ImgBB values as server-only variables. Set the client’s `NEXT_PUBLIC_API_URL` to the deployed API URL ending in `/api/v1`. After deployment, add the real production API and health URLs to the **Project links** table above.
 
-## Related repository
+## Repository structure and license
 
-The companion frontend is maintained at [khalidhasan-m/property-rental-client](https://github.com/khalidhasan-m/property-rental-client).
-
-## License
-
-No license file is currently included in this repository.
+The project uses CommonJS JavaScript and keeps backend business logic in `src`. Dependency installation is managed by npm with `package.json` and `package-lock.json`. No license file is currently included.
