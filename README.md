@@ -61,7 +61,7 @@ Create `.env` from `.env.example` and provide the following values.
 | `JWT_EXPIRES_IN` | JWT lifetime, for example `7d`. |
 | `CLIENT_URL` | Allowed client origin, for example `http://localhost:3000`. |
 | `STRIPE_SECRET_KEY` | Stripe secret test or live key. |
-| `IMGBB_API_KEY` | imgbb API key for property image uploads. |
+| `IMGBB_API_KEY` | imgbb API key for property image uploads; required when `NODE_ENV=production`. Never commit the real value. |
 | `GOOGLE_CLIENT_ID` | Google OAuth web client ID for token verification. |
 | `COOKIE_SECURE` | Use `false` locally and `true` in production. |
 
@@ -79,4 +79,4 @@ Register an account normally from the client application, then manually update t
 
 ## Deployment
 
-Deploy this repository to Vercel as a Node.js project. The included `api/index.js` file exposes the Express app as a serverless function. Add the environment variables in Vercel, set `COOKIE_SECURE=true`, and change `CLIENT_URL` to the deployed frontend address. Then place the deployed API URL in the client’s `NEXT_PUBLIC_API_URL` variable.
+Deploy this repository to Vercel as a Node.js project. The included `api/index.js` file exposes the Express app as a serverless function. Add the environment variables in Vercel, including the real `IMGBB_API_KEY` as a server-only Production environment variable, set `COOKIE_SECURE=true`, and change `CLIENT_URL` to the deployed frontend address. Never add the key to Git, `.env.example`, client variables, or browser-exposed `NEXT_PUBLIC_*` variables. Then place the deployed API URL in the client’s `NEXT_PUBLIC_API_URL` variable.

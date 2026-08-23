@@ -13,6 +13,10 @@ const envSchema = z.object({
   IMGBB_API_KEY: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   COOKIE_SECURE: z.enum(["true", "false"]).default("false"),
+}).superRefine((data, ctx) => {
+  if (data.NODE_ENV === "production" && !data.IMGBB_API_KEY) {
+    ctx.addIssue({ code: "custom", path: ["IMGBB_API_KEY"], message: "IMGBB_API_KEY is required in production" });
+  }
 });
 
 const env = envSchema.parse(process.env);
