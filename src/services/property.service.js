@@ -9,11 +9,16 @@ function serialize(value) {
   return value;
 }
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 function propertyMatch(query, status = "approved") {
   const match = status ? { status } : {};
-  if (query.location) match.location = { $regex: query.location, $options: "i" };
-  if (query.search) match.$or = [{ title: { $regex: query.search, $options: "i" } }, { location: { $regex: query.search, $options: "i" } }, { propertyType: { $regex: query.search, $options: "i" } }];
-  if (query.propertyType) match.propertyType = { $regex: `^${query.propertyType}$`, $options: "i" };
+  if (query.location) match.location = { $regex: escapeRegex(query.location), $options: "i" };
+  if (query.search) {
+    const safeSearch = escapeRegex(query.search);
+    match.$or = [{ title: { $regex: safeSearch, $options: "i" } }, { location: { $regex: safeSearch, $options: "i" } }, { propertyType: { $regex: safeSearch, $options: "i" } }];
+  }
+  if (query.propertyType) match.propertyType = { $regex: `^${escapeRegex(query.propertyType)}$`, $options: "i" };
   if (query.minPrice !== undefined || query.maxPrice !== undefined) match.rent = { ...(query.minPrice !== undefined ? { $gte: query.minPrice } : {}), ...(query.maxPrice !== undefined ? { $lte: query.maxPrice } : {}) };
   return match;
 }

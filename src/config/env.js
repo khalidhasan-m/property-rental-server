@@ -8,7 +8,7 @@ const envSchema = z.object({
   MONGODB_DB: z.string().default("property_rental"),
   JWT_SECRET: z.string().min(24, "JWT_SECRET must be at least 24 characters"),
   JWT_EXPIRES_IN: z.string().default("7d"),
-  CLIENT_URL: z.string().url().default("http://localhost:3000"),
+  CLIENT_URL: z.string().refine((value) => value.split(",").every((url) => z.string().url().safeParse(url.trim()).success), "CLIENT_URL must contain valid URL values separated by commas").default("http://localhost:3000"),
   STRIPE_SECRET_KEY: z.string().optional(),
   IMGBB_API_KEY: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),

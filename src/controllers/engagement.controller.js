@@ -40,6 +40,20 @@ async function addReview(req, res) {
   return res.status(201).json({ success: true, message: "Review saved" });
 }
 
+async function getFeaturedReviews(_req, res) {
+  const reviews = await (await connectDb()).collection("reviews").aggregate([
+    { $lookup: { from: "properties", localField: "propertyId", foreignField: "_id", as: "property" } },
+    { $unwind: "$property" },
+    { $match: { "property.status": "approved" } },
+    { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
+    { $unwind: "$user" },
+    { $project: { rating: 1, comment: 1, createdAt: 1, "user.name": 1, "user.email": 1, propertyTitle: "$property.title" } },
+    { $sort: { createdAt: -1 } },
+    { $limit: 4 },
+  ]).toArray();
+  return res.json({ success: true, data: reviews.map(serialize) });
+}
+
 async function getReviews(req, res) {
   const reviews = await (await connectDb()).collection("reviews").aggregate([
     { $match: { propertyId: new ObjectId(req.params.id) } },
@@ -49,4 +63,4 @@ async function getReviews(req, res) {
   return res.json({ success: true, data: reviews.map(serialize) });
 }
 
-module.exports = { addFavorite, getFavorites, removeFavorite, addReview, getReviews };
+module.exports = { addFavorite, getFavorites, removeFavorite, addReview, getFeaturedReviews, getReviews };

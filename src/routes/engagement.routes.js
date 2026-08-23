@@ -6,6 +6,7 @@ const { favoriteSchema, reviewSchema } = require("../validations/booking.validat
 const { idParamSchema } = require("../validations/property.validation");
 
 const router = express.Router();
+router.get("/reviews/featured", controller.getFeaturedReviews);
 router.get("/favorites", requireAuth, requireRole("tenant"), controller.getFavorites);
 router.post("/favorites", requireAuth, requireRole("tenant"), validate(favoriteSchema), controller.addFavorite);
 router.delete("/favorites/:id", requireAuth, requireRole("tenant"), validate(idParamSchema, "params"), controller.removeFavorite);
