@@ -12,6 +12,25 @@ async function getFeaturedProperties(_req, res) {
   return res.json({ success: true, data: result.data });
 }
 
+async function getTopLocations(_req, res) {
+  const database = await connectDb();
+  const locations = await database.collection("properties").aggregate([
+    { $match: { status: "approved" } },
+    { $addFields: {
+        city: { $trim: { input: { $last: { $split: ["$location", ","] } } } }
+    }},
+    { $group: {
+        _id: "$city",
+        propertiesCount: { $sum: 1 },
+        image: { $first: { $arrayElemAt: ["$images", 0] } }
+    }},
+    { $sort: { propertiesCount: -1 } },
+    { $limit: 4 },
+    { $project: { name: "$_id", properties: "$propertiesCount", image: 1, _id: 0 } }
+  ]).toArray();
+  return res.json({ success: true, data: locations });
+}
+
 async function getProperty(req, res) {
   const property = await getPropertyById(req.validated.id);
   if (!property || property.status !== "approved") return res.status(404).json({ success: false, message: "Property was not found" });
@@ -59,7 +78,8 @@ async function deleteProperty(req, res) {
 }
 
 async function adminProperties(req, res) {
-  const result = await listProperties(req.validated, { status: req.validated.status || undefined });
+  const status = req.validated.status || "all";
+  const result = await listProperties(req.validated, { status });
   return res.json({ success: true, ...result });
 }
 
@@ -80,4 +100,4 @@ async function getOwnProperty(req, res) {
   return res.json({ success: true, data: serialize(property) });
 }
 
-module.exports = { getProperties, getFeaturedProperties, getProperty, createProperty, getMyProperties, getOwnProperty, updateProperty, deleteProperty, adminProperties, moderateProperty };
+module.exports = { getProperties, getFeaturedProperties, getTopLocations, getProperty, createProperty, getMyProperties, getOwnProperty, updateProperty, deleteProperty, adminProperties, moderateProperty };

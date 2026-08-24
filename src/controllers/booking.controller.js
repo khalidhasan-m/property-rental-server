@@ -9,6 +9,18 @@ async function createBooking(req, res) {
   const property = await database.collection("properties").findOne({ _id: new ObjectId(propertyId), status: "approved" });
   if (!property) return res.status(404).json({ success: false, message: "Approved property was not found" });
   if (property.ownerId.toString() === req.user._id.toString()) return res.status(400).json({ success: false, message: "You cannot book your own property" });
+
+  const existingBooking = await database.collection("bookings").findOne({
+    propertyId: property._id,
+    tenantId: new ObjectId(req.user._id),
+    moveInDate,
+    bookingStatus: { $in: ["pending", "approved"] }
+  });
+
+  if (existingBooking) {
+    return res.status(409).json({ success: false, message: "You already have an active booking for this property on this date" });
+  }
+
   const booking = { propertyId: property._id, tenantId: new ObjectId(req.user._id), ownerId: property.ownerId, moveInDate, contactNumber, notes: notes || undefined, amount: property.rent, bookingStatus: "pending", paymentStatus: "pending", createdAt: new Date(), updatedAt: new Date() };
   const result = await database.collection("bookings").insertOne(booking);
   return res.status(201).json({ success: true, message: "Booking created. Continue to payment.", data: serialize({ ...booking, _id: result.insertedId }) });
@@ -64,19 +76,51 @@ async function decideBooking(req, res) {
   const database = await connectDb();
   const booking = await database.collection("bookings").findOne({ _id: new ObjectId(req.params.id), ownerId: new ObjectId(req.user._id) });
   if (!booking) return res.status(404).json({ success: false, message: "Booking was not found" });
-  await database.collection("bookings").updateOne({ _id: booking._id }, { $set: { bookingStatus: req.validated.bookingStatus, updatedAt: new Date() } });
-  return res.json({ success: true, message: `Booking ${req.validated.bookingStatus}` });
+
+  const { bookingStatus } = req.validated;
+  const updateFields = { bookingStatus, updatedAt: new Date() };
+
+  if (bookingStatus === "rejected" && booking.paymentStatus === "paid") {
+    updateFields.paymentStatus = "refunded";
+  }
+
+  await database.collection("bookings").updateOne({ _id: booking._id }, { $set: updateFields });
+
+  if (bookingStatus === "rejected") {
+    await database.collection("transactions").updateMany(
+      { bookingId: booking._id },
+      { $set: { status: "refunded", updatedAt: new Date() } }
+    );
+  } else if (bookingStatus === "approved" && booking.paymentStatus === "paid") {
+    await database.collection("transactions").updateMany(
+      { bookingId: booking._id },
+      { $set: { status: "succeeded", updatedAt: new Date() } }
+    );
+  }
+
+  return res.json({ success: true, message: `Booking ${bookingStatus}` });
 }
 
-async function adminBookings(_req, res) {
+async function adminBookings(req, res) {
   const database = await connectDb();
-  const bookings = await database.collection("bookings").aggregate([
-    { $lookup: { from: "properties", localField: "propertyId", foreignField: "_id", as: "property" } }, { $unwind: "$property" },
-    { $lookup: { from: "users", localField: "tenantId", foreignField: "_id", as: "tenant" } }, { $unwind: "$tenant" },
-    { $lookup: { from: "users", localField: "ownerId", foreignField: "_id", as: "owner" } }, { $unwind: "$owner" },
-    { $sort: { createdAt: -1 } }, { $project: { "tenant.passwordHash": 0, "owner.passwordHash": 0 } },
+  const { page, limit } = req.validated;
+  const [result] = await database.collection("bookings").aggregate([
+    { $sort: { createdAt: -1 } },
+    { $facet: {
+        metadata: [{ $count: "total" }],
+        data: [
+          { $skip: (page - 1) * limit },
+          { $limit: limit },
+          { $lookup: { from: "properties", localField: "propertyId", foreignField: "_id", as: "property" } }, { $unwind: "$property" },
+          { $lookup: { from: "users", localField: "tenantId", foreignField: "_id", as: "tenant" } }, { $unwind: "$tenant" },
+          { $lookup: { from: "users", localField: "ownerId", foreignField: "_id", as: "owner" } }, { $unwind: "$owner" },
+          { $project: { "tenant.passwordHash": 0, "owner.passwordHash": 0 } }
+        ]
+    }}
   ]).toArray();
-  return res.json({ success: true, data: bookings.map(serialize) });
+
+  const total = result.metadata[0]?.total || 0;
+  return res.json({ success: true, data: result.data.map(serialize), pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) } });
 }
 
 module.exports = { createBooking, createPaymentIntent, confirmPayment, myBookings, ownerBookings, decideBooking, adminBookings };

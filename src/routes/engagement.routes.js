@@ -13,4 +13,6 @@ router.delete("/favorites/:id", requireAuth, requireRole("tenant"), validate(idP
 router.post("/reviews", requireAuth, requireRole("tenant"), validate(reviewSchema), controller.addReview);
 router.get("/reviews/:id", validate(idParamSchema, "params"), controller.getReviews);
 
+router.get("/owners/trusted", controller.getTrustedOwners);
+
 module.exports = router;

@@ -5,3 +5,6 @@ dist/
 coverage/
 .vercel/
 *.log
+._*
+.DS_Store
+__MACOSX/

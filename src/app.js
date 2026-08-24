@@ -28,8 +28,20 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(express.json({ limit: "10mb" }));
+const { toNodeHandler } = require("better-auth/node");
+const { getAuth } = require("./config/auth");
+
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
+app.use("/api/auth", async (req, res, next) => {
+  try {
+    const auth = await getAuth();
+    return toNodeHandler(auth)(req, res);
+  } catch (err) {
+    return next(err);
+  }
+});
 app.get("/", (_req, res) => res.json({ success: true, message: "Nestora API is running" }));
 app.get("/api/v1/health", (_req, res) => res.json({ success: true, data: { status: "ok", timestamp: new Date().toISOString() } }));
 app.use("/api/v1/auth", authRoutes);

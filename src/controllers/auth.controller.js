@@ -4,10 +4,12 @@ const { connectDb } = require("../config/db");
 const { clearAuthCookie, setAuthCookie, signToken } = require("../middlewares/auth");
 const { verifyGoogleIdToken } = require("../services/google.service");
 
-function publicUser(user) {
+function publicUser(user, token) {
+  if (!user) return null;
   const { passwordHash, ...safeUser } = user;
-  return { ...safeUser, _id: safeUser._id.toString() };
+  return { ...safeUser, _id: safeUser._id.toString(), ...(token ? { token } : {}) };
 }
+
 
 async function register(req, res) {
   const { name, email, password, photoURL, role } = req.validated;
@@ -18,16 +20,18 @@ async function register(req, res) {
   const user = { name, email: normalizedEmail, photoURL: photoURL || undefined, role: role || "tenant", provider: "credentials", passwordHash: await bcrypt.hash(password, 12), createdAt: now, updatedAt: now };
   const result = await users.insertOne(user);
   const created = { ...user, _id: result.insertedId };
-  setAuthCookie(res, signToken(result.insertedId.toString()));
-  return res.status(201).json({ success: true, message: "Account created successfully", data: publicUser(created) });
+  const token = signToken(result.insertedId.toString());
+  setAuthCookie(res, token);
+  return res.status(201).json({ success: true, message: "Account created successfully", token, data: publicUser(created, token) });
 }
 
 async function login(req, res) {
   const { email, password } = req.validated;
   const user = await (await connectDb()).collection("users").findOne({ email: email.toLowerCase() });
   if (!user?.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ success: false, message: "Email or password is incorrect" });
-  setAuthCookie(res, signToken(user._id.toString()));
-  return res.json({ success: true, message: "Welcome back", data: publicUser(user) });
+  const token = signToken(user._id.toString());
+  setAuthCookie(res, token);
+  return res.json({ success: true, message: "Welcome back", token, data: publicUser(user, token) });
 }
 
 async function socialLogin(req, res) {
@@ -36,20 +40,84 @@ async function socialLogin(req, res) {
   const now = new Date();
   await users.updateOne({ email: email.toLowerCase() }, { $setOnInsert: { name, email: email.toLowerCase(), photoURL, role: "tenant", provider: "google", createdAt: now }, $set: { updatedAt: now, ...(photoURL ? { photoURL } : {}) } }, { upsert: true });
   const user = await users.findOne({ email: email.toLowerCase() });
-  setAuthCookie(res, signToken(user._id.toString()));
-  return res.json({ success: true, message: "Signed in successfully", data: publicUser(user) });
+  const token = signToken(user._id.toString());
+  setAuthCookie(res, token);
+  return res.json({ success: true, message: "Signed in successfully", token, data: publicUser(user, token) });
 }
 
 function me(req, res) { return res.json({ success: true, data: publicUser(req.user) }); }
 function logout(_req, res) { clearAuthCookie(res); return res.json({ success: true, message: "Signed out successfully" }); }
 
+/**
+ * Called from the client's /auth/callback page after a successful Google OAuth
+ * redirect. Better Auth sets its own session cookie; this endpoint upserts the
+ * user into our `users` collection (with role="tenant" by default) and returns
+ * the user object so the client can populate AuthContext.
+ *
+ * No JWT is required — the Better Auth session cookie validates the caller.
+ */
+async function socialSync(req, res) {
+  const auth = await (require("../config/auth").getAuth());
+  // Verify caller has a valid Better Auth session
+  const session = await auth.api.getSession({ headers: req.headers }).catch(() => null);
+  if (!session?.user) return res.status(401).json({ success: false, message: "No valid session found" });
+
+  const { email, name, photoURL } = req.validated;
+  // Prefer the photoURL from the request body, then fall back to the Better Auth session image
+  const resolvedPhotoURL = photoURL || session.user.image || session.user.photoURL || undefined;
+
+  const users = (await connectDb()).collection("users");
+  const now = new Date();
+
+  await users.updateOne(
+    { email: email.toLowerCase() },
+    {
+      $setOnInsert: {
+        name: name || session.user.name || email.split("@")[0],
+        email: email.toLowerCase(),
+        role: "tenant",
+        provider: "google",
+        createdAt: now,
+      },
+      $set: {
+        updatedAt: now,
+        // Always sync the latest Google photo and name for both new and returning users
+        ...(resolvedPhotoURL ? { photoURL: resolvedPhotoURL } : {}),
+        ...(name ? { name } : {}),
+      },
+    },
+    { upsert: true }
+  );
+
+  const user = await users.findOne({ email: email.toLowerCase() });
+  if (!user) return res.status(500).json({ success: false, message: "Failed to sync user" });
+
+  // Issue our own JWT so subsequent API calls can use Bearer token
+  const token = signToken(user._id.toString());
+  setAuthCookie(res, token);
+  return res.json({ success: true, message: "Signed in with Google", token, data: publicUser(user, token) });
+}
+
 async function updateProfile(req, res) {
   const { name, photoURL, phone } = req.validated;
-  const update = { updatedAt: new Date(), ...(name ? { name } : {}), ...(photoURL !== undefined ? { photoURL: photoURL || undefined } : {}), ...(phone !== undefined ? { phone: phone || undefined } : {}) };
+  const update = { updatedAt: new Date() };
+  if (name) update.name = name;
+  if (photoURL !== undefined) update.photoURL = photoURL;
+  if (phone !== undefined) update.phone = phone;
+
   const users = (await connectDb()).collection("users");
-  await users.updateOne({ _id: new ObjectId(req.user._id) }, { $set: update });
-  const user = await users.findOne({ _id: new ObjectId(req.user._id) });
+
+  // Prefer lookup by email since it's universally unique in our app.
+  // This avoids issues where Better Auth IDs might accidentally parse as ObjectIds.
+  const filter = req.user.email 
+    ? { email: req.user.email.toLowerCase() } 
+    : { _id: new ObjectId(req.user._id) };
+
+  await users.updateOne(filter, { $set: update });
+  const user = await users.findOne(filter);
+  if (!user) return res.status(404).json({ success: false, message: "User not found" });
   return res.json({ success: true, message: "Profile updated", data: publicUser(user) });
 }
 
-module.exports = { register, login, socialLogin, me, logout, updateProfile };
+
+module.exports = { register, login, socialLogin, socialSync, me, logout, updateProfile };

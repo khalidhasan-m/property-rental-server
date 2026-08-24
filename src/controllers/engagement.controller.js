@@ -42,12 +42,13 @@ async function addReview(req, res) {
 
 async function getFeaturedReviews(_req, res) {
   const reviews = await (await connectDb()).collection("reviews").aggregate([
+    { $match: { rating: 5 } },
     { $lookup: { from: "properties", localField: "propertyId", foreignField: "_id", as: "property" } },
     { $unwind: "$property" },
     { $match: { "property.status": "approved" } },
     { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
     { $unwind: "$user" },
-    { $project: { rating: 1, comment: 1, createdAt: 1, "user.name": 1, "user.email": 1, propertyTitle: "$property.title" } },
+    { $project: { rating: 1, comment: 1, createdAt: 1, "user.name": 1, "user.email": 1, "user.photoURL": 1, propertyTitle: "$property.title" } },
     { $sort: { createdAt: -1 } },
     { $limit: 4 },
   ]).toArray();
@@ -63,4 +64,20 @@ async function getReviews(req, res) {
   return res.json({ success: true, data: reviews.map(serialize) });
 }
 
-module.exports = { addFavorite, getFavorites, removeFavorite, addReview, getFeaturedReviews, getReviews };
+async function getTrustedOwners(_req, res) {
+  const owners = await (await connectDb()).collection("users").aggregate([
+    { $match: { role: "owner", phone: { $exists: true, $ne: "" } } },
+    { $lookup: { from: "properties", localField: "_id", foreignField: "ownerId", as: "properties" } },
+    { $match: { "properties.0": { $exists: true } } },
+    { $project: {
+        name: 1,
+        photoURL: 1,
+        propertiesCount: { $size: "$properties" },
+        location: { $arrayElemAt: ["$properties.location", 0] }
+    } },
+    { $limit: 4 }
+  ]).toArray();
+  return res.json({ success: true, data: owners.map(serialize) });
+}
+
+module.exports = { addFavorite, getFavorites, removeFavorite, addReview, getFeaturedReviews, getReviews, getTrustedOwners };

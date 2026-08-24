@@ -108,6 +108,7 @@ The current payment flow creates a PaymentIntent in USD, converts the rental amo
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
 | `GET` | `/api/v1/reviews/featured` | Public | Return up to four recent reviews for approved properties |
+| `GET` | `/api/v1/owners/trusted` | Public | Return up to four trusted owners for the homepage |
 | `GET` | `/api/v1/favorites` | Tenant | List saved properties |
 | `POST` | `/api/v1/favorites` | Tenant | Save an approved property |
 | `DELETE` | `/api/v1/favorites/:id` | Tenant | Remove a saved property |
@@ -128,7 +129,7 @@ The current payment flow creates a PaymentIntent in USD, converts the rental amo
 
 The supported roles are `tenant`, `owner`, and `admin`. Every protected request verifies the JWT in the HTTP-only `accessToken` cookie and reloads the user from MongoDB. Role middleware enforces access to Tenant, Owner, and Admin endpoints.
 
-The server uses credential-enabled CORS with the comma-separated `CLIENT_URL` allowlist. State-changing requests with an untrusted `Origin` are rejected. Express disables `x-powered-by` and sends `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and a strict referrer policy. Production error responses hide unexpected server details. JSON request bodies are limited to `10mb` because owner image uploads use base64 data.
+The server uses credential-enabled CORS with the comma-separated `CLIENT_URL` allowlist. State-changing requests with an untrusted `Origin` are rejected. Express disables `x-powered-by` and sends `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and a strict referrer policy. Production error responses hide unexpected server details. JSON request bodies are limited to `50mb` to support heavy owner image uploads using base64 data.
 
 Never commit MongoDB credentials, JWT secrets, Stripe secret keys, Google credentials, or the ImgBB API key. The `.env` file is excluded from Git.
 

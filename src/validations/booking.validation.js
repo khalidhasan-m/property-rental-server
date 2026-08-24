@@ -13,5 +13,9 @@ const paymentIntentSchema = z.object({ bookingId: objectId });
 const confirmPaymentSchema = z.object({ bookingId: objectId, paymentIntentId: z.string().min(5) });
 const favoriteSchema = z.object({ propertyId: objectId });
 const reviewSchema = z.object({ propertyId: objectId, rating: z.coerce.number().int().min(1).max(5), comment: z.string().trim().min(3).max(800) });
+const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
 
-module.exports = { createBookingSchema, bookingIdSchema, bookingDecisionSchema, paymentIntentSchema, confirmPaymentSchema, favoriteSchema, reviewSchema };
+module.exports = { createBookingSchema, bookingIdSchema, bookingDecisionSchema, paymentIntentSchema, confirmPaymentSchema, favoriteSchema, reviewSchema, paginationSchema };

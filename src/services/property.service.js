@@ -12,7 +12,7 @@ function serialize(value) {
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 function propertyMatch(query, status = "approved") {
-  const match = status ? { status } : {};
+  const match = (status && status !== "all") ? { status } : {};
   if (query.location) match.location = { $regex: escapeRegex(query.location), $options: "i" };
   if (query.search) {
     const safeSearch = escapeRegex(query.search);

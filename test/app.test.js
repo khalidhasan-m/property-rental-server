@@ -47,3 +47,9 @@ test("property detail endpoint requires authentication", async () => {
   assert.equal(response.status, 401);
   assert.match(response.body, /Authentication is required/);
 });
+
+test("invalid Bearer token is rejected", async () => {
+  const response = await request("/api/v1/auth/me", { headers: { Authorization: "Bearer invalid.jwt.token" } });
+  assert.equal(response.status, 401);
+  assert.match(response.body, /Invalid or expired session/);
+});

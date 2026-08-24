@@ -6,6 +6,7 @@ const { createPropertySchema, updatePropertySchema, propertyQuerySchema, idParam
 
 const router = express.Router();
 router.get("/featured", controller.getFeaturedProperties);
+router.get("/locations/top", controller.getTopLocations);
 router.get("/", validate(propertyQuerySchema, "query"), controller.getProperties);
 router.get("/mine", requireAuth, requireRole("owner"), validate(propertyQuerySchema, "query"), controller.getMyProperties);
 router.get("/mine/:id", requireAuth, requireRole("owner"), validate(idParamSchema, "params"), controller.getOwnProperty);
