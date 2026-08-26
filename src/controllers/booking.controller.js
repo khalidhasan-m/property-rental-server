@@ -78,13 +78,28 @@ async function myBookings(req, res) {
 
 async function ownerBookings(req, res) {
   const database = await connectDb();
-  const bookings = await database.collection("bookings").aggregate([
+  const { page, limit } = req.validated;
+  const [result] = await database.collection("bookings").aggregate([
     { $match: { ownerId: new ObjectId(req.user._id) } },
     { $lookup: { from: "properties", localField: "propertyId", foreignField: "_id", as: "property" } }, { $unwind: "$property" },
     { $lookup: { from: "users", localField: "tenantId", foreignField: "_id", as: "tenant" } }, { $unwind: "$tenant" },
-    { $sort: { createdAt: -1 } }, { $project: { "tenant.passwordHash": 0 } },
+    { $sort: { createdAt: -1 } },
+    { $facet: {
+        metadata: [{ $count: "total" }],
+        data: [
+          { $skip: (page - 1) * limit },
+          { $limit: limit },
+          { $project: { "tenant.passwordHash": 0 } }
+        ]
+    }}
   ]).toArray();
-  return res.json({ success: true, data: bookings.map(serialize) });
+
+  const total = result.metadata[0]?.total || 0;
+  return res.json({
+    success: true,
+    data: result.data.map(serialize),
+    pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+  });
 }
 
 async function decideBooking(req, res) {
