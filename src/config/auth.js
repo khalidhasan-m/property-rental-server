@@ -44,6 +44,12 @@ async function getAuth() {
     trustedOrigins: env.CLIENT_URL.split(",").map((url) => url.trim()),
     advanced: {
       cookies: {
+        state: {
+          attributes: {
+            sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+            secure: env.NODE_ENV === "production",
+          },
+        },
         oauth_state: {
           attributes: {
             sameSite: env.NODE_ENV === "production" ? "none" : "lax",
