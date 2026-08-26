@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const test = require("node:test");
 const app = require("../src/app");
+const { canApproveBooking } = require("../src/controllers/booking.controller");
 
 function request(path, options = {}) {
   return new Promise((resolve, reject) => {
@@ -58,6 +59,14 @@ test("invalid property query is rejected by validation", async () => {
   const response = await request("/api/v1/properties?minPrice=-1");
   assert.equal(response.status, 400);
   assert.match(response.body, /Validation failed/);
+});
+
+test("pending payment cannot be approved", () => {
+  assert.equal(canApproveBooking({ paymentStatus: "pending" }), false);
+});
+
+test("paid payment can be approved", () => {
+  assert.equal(canApproveBooking({ paymentStatus: "paid" }), true);
 });
 
 test("invalid Bearer token is rejected", async () => {

@@ -3,6 +3,10 @@ const { connectDb } = require("../config/db");
 const { createReservationIntent, retrievePaymentIntent } = require("../services/stripe.service");
 const { serialize } = require("../services/property.service");
 
+function canApproveBooking(booking) {
+  return booking?.paymentStatus === "paid";
+}
+
 async function createBooking(req, res) {
   const { propertyId, moveInDate, contactNumber, notes } = req.validated;
   const database = await connectDb();
@@ -89,6 +93,10 @@ async function decideBooking(req, res) {
   if (!booking) return res.status(404).json({ success: false, message: "Booking was not found" });
 
   const { bookingStatus } = req.validated;
+  if (bookingStatus === "approved" && !canApproveBooking(booking)) {
+    return res.status(400).json({ success: false, message: "Payment must be completed before approving this booking" });
+  }
+
   const updateFields = { bookingStatus, updatedAt: new Date() };
 
   if (bookingStatus === "rejected" && booking.paymentStatus === "paid") {
@@ -134,4 +142,4 @@ async function adminBookings(req, res) {
   return res.json({ success: true, data: result.data.map(serialize), pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) } });
 }
 
-module.exports = { createBooking, createPaymentIntent, confirmPayment, myBookings, ownerBookings, decideBooking, adminBookings };
+module.exports = { createBooking, createPaymentIntent, confirmPayment, myBookings, ownerBookings, decideBooking, adminBookings, canApproveBooking };
