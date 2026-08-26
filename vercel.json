@@ -1,20 +1,9 @@
 {
-  "$schema": "https://vercel.com/schema/v2.json",
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "src/index.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/src/index.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/src/index.js"
+      "source": "/(.*)",
+      "destination": "/api/index.js"
     }
   ]
 }

@@ -1,5 +1,3 @@
-const { betterAuth } = require("better-auth");
-const { mongodbAdapter } = require("better-auth/adapters/mongodb");
 const { connectDb } = require("./db");
 const { env } = require("./env");
 
@@ -7,6 +5,8 @@ let authInstance = null;
 
 async function getAuth() {
   if (authInstance) return authInstance;
+  const { betterAuth } = await import("better-auth");
+  const { mongodbAdapter } = await import("better-auth/adapters/mongodb");
   const db = await connectDb();
   authInstance = betterAuth({
     database: mongodbAdapter(db),
