@@ -75,7 +75,6 @@ async function socialSync(req, res) {
     { email: email.toLowerCase() },
     {
       $setOnInsert: {
-        name: resolvedName,
         email: email.toLowerCase(),
         role: "tenant",
         provider: "google",
@@ -83,9 +82,9 @@ async function socialSync(req, res) {
       },
       $set: {
         updatedAt: now,
+        name: resolvedName,
         // Always sync the latest Google photo for both new and returning users
         ...(resolvedPhotoURL ? { photoURL: resolvedPhotoURL } : {}),
-        name: resolvedName,
       },
     },
     { upsert: true }

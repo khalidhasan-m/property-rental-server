@@ -12,7 +12,7 @@ This repository contains the **Express backend API**. The frontend is maintained
 | Client repository | [`khalidhasan-m/property-rental-client`](https://github.com/khalidhasan-m/property-rental-client) |
 | Production API URL | https://property-rental-server-bice.vercel.app |
 | Production health check | https://property-rental-server-bice.vercel.app/api/v1/health |
-| Local API URL | `http://localhost:5000` |
+| Local API URL | `http://localhost:5050` |
 | API base path | `/api/v1` |
 
 ## Technology stack
@@ -144,7 +144,7 @@ cp .env.example .env
 | Variable | Required | Description |
 |---|---|---|
 | `NODE_ENV` | No | `development`, `test`, or `production`; defaults to `development`. |
-| `PORT` | No | HTTP port; defaults to `5000`. |
+| `PORT` | No | HTTP port; defaults to `5050`. |
 | `MONGODB_URI` | Yes | MongoDB connection string. |
 | `MONGODB_DB` | No | Database name; defaults to `property_rental`. |
 | `JWT_SECRET` | Yes | At least 24 characters; signs authentication JWTs. |
@@ -174,7 +174,7 @@ Edit `.env` and set at least `MONGODB_URI` and `JWT_SECRET`. Set Stripe, Google,
 npm run dev
 ```
 
-The API is available at [http://localhost:5000](http://localhost:5000), with the health endpoint at [http://localhost:5000/api/v1/health](http://localhost:5000/api/v1/health).
+The API is available at [http://localhost:5050](http://localhost:5050), with the health endpoint at [http://localhost:5050/api/v1/health](http://localhost:5050/api/v1/health).
 
 | Command | Purpose |
 |---|---|

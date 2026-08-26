@@ -41,7 +41,7 @@ async function getAuth() {
         },
       },
     },
-    trustedOrigins: env.CLIENT_URL.split(",").map((url) => url.trim()),
+    trustedOrigins: (env.CLIENT_URL || "").split(",").map((url) => url.trim()).filter(Boolean),
     advanced: {
       defaultCookieAttributes: {
         sameSite: env.NODE_ENV === "production" ? "none" : "lax",
