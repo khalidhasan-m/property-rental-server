@@ -22,7 +22,7 @@ async function register(req, res) {
   const created = { ...user, _id: result.insertedId };
   const token = signToken(result.insertedId.toString());
   setAuthCookie(res, token);
-  return res.status(201).json({ success: true, message: "Account created successfully", token, data: publicUser(created, token) });
+  return res.status(201).json({ success: true, message: "Account created successfully", data: publicUser(created) });
 }
 
 async function login(req, res) {
@@ -31,7 +31,7 @@ async function login(req, res) {
   if (!user?.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ success: false, message: "Email or password is incorrect" });
   const token = signToken(user._id.toString());
   setAuthCookie(res, token);
-  return res.json({ success: true, message: "Welcome back", token, data: publicUser(user, token) });
+  return res.json({ success: true, message: "Welcome back", data: publicUser(user) });
 }
 
 async function socialLogin(req, res) {
@@ -42,7 +42,7 @@ async function socialLogin(req, res) {
   const user = await users.findOne({ email: email.toLowerCase() });
   const token = signToken(user._id.toString());
   setAuthCookie(res, token);
-  return res.json({ success: true, message: "Signed in successfully", token, data: publicUser(user, token) });
+  return res.json({ success: true, message: "Signed in successfully", data: publicUser(user) });
 }
 
 function me(req, res) { return res.json({ success: true, data: publicUser(req.user) }); }
@@ -62,9 +62,11 @@ async function socialSync(req, res) {
   const session = await auth.api.getSession({ headers: req.headers }).catch(() => null);
   if (!session?.user) return res.status(401).json({ success: false, message: "No valid session found" });
 
-  const { email, name, photoURL } = req.validated;
-  // Prefer the photoURL from the request body, then fall back to the Better Auth session image
-  const resolvedPhotoURL = photoURL || session.user.image || session.user.photoURL || undefined;
+  const email = session.user.email?.toLowerCase();
+  if (!email) return res.status(400).json({ success: false, message: "Session email missing" });
+  // Derive name and photoURL from the verified Better Auth session only
+  const resolvedName = session.user.name || email.split("@")[0];
+  const resolvedPhotoURL = session.user.image || session.user.photoURL || undefined;
 
   const users = (await connectDb()).collection("users");
   const now = new Date();
@@ -73,7 +75,7 @@ async function socialSync(req, res) {
     { email: email.toLowerCase() },
     {
       $setOnInsert: {
-        name: name || session.user.name || email.split("@")[0],
+        name: resolvedName,
         email: email.toLowerCase(),
         role: "tenant",
         provider: "google",
@@ -81,9 +83,9 @@ async function socialSync(req, res) {
       },
       $set: {
         updatedAt: now,
-        // Always sync the latest Google photo and name for both new and returning users
+        // Always sync the latest Google photo for both new and returning users
         ...(resolvedPhotoURL ? { photoURL: resolvedPhotoURL } : {}),
-        ...(name ? { name } : {}),
+        name: resolvedName,
       },
     },
     { upsert: true }
@@ -95,7 +97,7 @@ async function socialSync(req, res) {
   // Issue our own JWT so subsequent API calls can use Bearer token
   const token = signToken(user._id.toString());
   setAuthCookie(res, token);
-  return res.json({ success: true, message: "Signed in with Google", token, data: publicUser(user, token) });
+  return res.json({ success: true, message: "Signed in with Google", data: publicUser(user) });
 }
 
 async function updateProfile(req, res) {
