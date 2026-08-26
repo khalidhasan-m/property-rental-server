@@ -42,6 +42,16 @@ async function getAuth() {
       },
     },
     trustedOrigins: env.CLIENT_URL.split(",").map((url) => url.trim()),
+    advanced: {
+      cookies: {
+        oauth_state: {
+          attributes: {
+            sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+            secure: env.NODE_ENV === "production",
+          },
+        },
+      },
+    },
   });
   return authInstance;
 }
