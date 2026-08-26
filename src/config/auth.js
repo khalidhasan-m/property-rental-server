@@ -11,7 +11,7 @@ async function getAuth() {
   authInstance = betterAuth({
     database: mongodbAdapter(db),
     secret: env.JWT_SECRET,
-    baseURL: env.CLIENT_URL,
+    baseURL: env.SERVER_URL,
     basePath: "/api/auth",
     emailAndPassword: {
       enabled: true,

@@ -13,7 +13,11 @@ const { errorHandler, notFound } = require("./middlewares/error");
 const app = express();
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
-const allowedOrigins = env.CLIENT_URL.split(",").map((url) => url.trim());
+const allowedOrigins = Array.from(new Set(
+  env.CLIENT_URL
+    ? env.CLIENT_URL.split(",").map((url) => url.trim())
+    : ["http://localhost:3000"] // fallback only when CLIENT_URL is not set (local dev without .env)
+));
 app.use(cors({ origin: allowedOrigins, credentials: true, methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"], allowedHeaders: ["Content-Type", "Authorization"] }));
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");

@@ -10,15 +10,26 @@ async function createBooking(req, res) {
   if (!property) return res.status(404).json({ success: false, message: "Approved property was not found" });
   if (property.ownerId.toString() === req.user._id.toString()) return res.status(400).json({ success: false, message: "You cannot book your own property" });
 
-  const existingBooking = await database.collection("bookings").findOne({
+  // Check if the tenant already has a booking for this property/date
+  const tenantBooking = await database.collection("bookings").findOne({
     propertyId: property._id,
     tenantId: new ObjectId(req.user._id),
     moveInDate,
-    bookingStatus: { $in: ["pending", "approved"] }
+    bookingStatus: { $in: ["pending", "approved"] },
   });
-
-  if (existingBooking) {
+  if (tenantBooking) {
     return res.status(409).json({ success: false, message: "You already have an active booking for this property on this date" });
+  }
+
+  // Check if any other tenant has a booking for the same property and date
+  const conflictingBooking = await database.collection("bookings").findOne({
+    propertyId: property._id,
+    moveInDate,
+    bookingStatus: { $in: ["pending", "approved"] },
+    tenantId: { $ne: new ObjectId(req.user._id) },
+  });
+  if (conflictingBooking) {
+    return res.status(409).json({ success: false, message: "Property is already booked for this date" });
   }
 
   const booking = { propertyId: property._id, tenantId: new ObjectId(req.user._id), ownerId: property.ownerId, moveInDate, contactNumber, notes: notes || undefined, amount: property.rent, bookingStatus: "pending", paymentStatus: "pending", createdAt: new Date(), updatedAt: new Date() };

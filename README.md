@@ -10,8 +10,8 @@ This repository contains the **Express backend API**. The frontend is maintained
 |---|---|
 | Server repository | [`khalidhasan-m/property-rental-server`](https://github.com/khalidhasan-m/property-rental-server) |
 | Client repository | [`khalidhasan-m/property-rental-client`](https://github.com/khalidhasan-m/property-rental-client) |
-| Production API URL | **Add the deployed API URL here before submission.** |
-| Production health check | **Add the deployed `/api/v1/health` URL here before submission.** |
+| Production API URL | https://property-rental-server-bice.vercel.app |
+| Production health check | https://property-rental-server-bice.vercel.app/api/v1/health |
 | Local API URL | `http://localhost:5000` |
 | API base path | `/api/v1` |
 
