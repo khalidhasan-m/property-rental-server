@@ -12,14 +12,24 @@ async function addFavorite(req, res) {
 }
 
 async function getFavorites(req, res) {
-  const favorites = await (await connectDb()).collection("favorites").aggregate([
+  const { page, limit } = req.validated;
+  const [result] = await (await connectDb()).collection("favorites").aggregate([
     { $match: { tenantId: new ObjectId(req.user._id) } },
     { $lookup: { from: "properties", localField: "propertyId", foreignField: "_id", as: "property" } }, { $unwind: "$property" },
     { $lookup: { from: "users", localField: "property.ownerId", foreignField: "_id", as: "owner" } }, { $unwind: "$owner" },
     { $addFields: { "property.owner": { _id: "$owner._id", name: "$owner.name", email: "$owner.email", photoURL: "$owner.photoURL" } } },
     { $replaceRoot: { newRoot: "$property" } }, { $sort: { createdAt: -1 } },
+    { $facet: {
+        metadata: [{ $count: "total" }],
+        data: [{ $skip: (page - 1) * limit }, { $limit: limit }]
+    }}
   ]).toArray();
-  return res.json({ success: true, data: favorites.map(serialize) });
+  const total = result.metadata[0]?.total || 0;
+  return res.json({
+    success: true,
+    data: result.data.map(serialize),
+    pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+  });
 }
 
 async function removeFavorite(req, res) {
