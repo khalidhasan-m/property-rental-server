@@ -10,6 +10,7 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default("7d"),
   SERVER_URL: z.string().default("http://localhost:5050"),
   CLIENT_URL: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
   IMGBB_API_KEY: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
